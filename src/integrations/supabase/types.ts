@@ -14,16 +14,191 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      fines: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          issued_at: string
+          issued_by: string | null
+          location: string | null
+          notes: string | null
+          owner_name: string
+          paid_at: string | null
+          plate_number: string
+          status: string
+          updated_at: string
+          vehicle_id: string
+          violation_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          location?: string | null
+          notes?: string | null
+          owner_name: string
+          paid_at?: string | null
+          plate_number: string
+          status?: string
+          updated_at?: string
+          vehicle_id: string
+          violation_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          location?: string | null
+          notes?: string | null
+          owner_name?: string
+          paid_at?: string | null
+          plate_number?: string
+          status?: string
+          updated_at?: string
+          vehicle_id?: string
+          violation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fines_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          badge_number: string | null
+          created_at: string
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          badge_number?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          badge_number?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scan_logs: {
+        Row: {
+          created_at: string
+          fines_count: number | null
+          id: string
+          plate_number: string
+          result: string
+          scanned_by: string | null
+          total_amount: number | null
+        }
+        Insert: {
+          created_at?: string
+          fines_count?: number | null
+          id?: string
+          plate_number: string
+          result: string
+          scanned_by?: string | null
+          total_amount?: number | null
+        }
+        Update: {
+          created_at?: string
+          fines_count?: number | null
+          id?: string
+          plate_number?: string
+          result?: string
+          scanned_by?: string | null
+          total_amount?: number | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          owner_name: string
+          owner_phone: string | null
+          plate_number: string
+          updated_at: string
+          vehicle_type: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          owner_name: string
+          owner_phone?: string | null
+          plate_number: string
+          updated_at?: string
+          vehicle_type?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          owner_name?: string
+          owner_phone?: string | null
+          plate_number?: string
+          updated_at?: string
+          vehicle_type?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "officer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +325,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "officer"],
+    },
   },
 } as const
