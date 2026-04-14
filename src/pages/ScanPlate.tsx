@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import OfficerLayout from "@/components/OfficerLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, X, RotateCcw, Search, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import { Camera, X, RotateCcw, Search, AlertTriangle, CheckCircle, Loader2, ImagePlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,6 +26,7 @@ export default function ScanPlate() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -85,73 +86,60 @@ export default function ScanPlate() {
     ctx.drawImage(video, 0, 0);
 
     stopCamera();
-    setStep("processing");
 
     const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
 
+    processImageDataUrl(imageDataUrl);
+  }, [stopCamera, processImageDataUrl]);
+
+  const processImageDataUrl = useCallback(async (imageDataUrl: string) => {
+    setStep("processing");
     try {
       const { data, error } = await supabase.functions.invoke("ocr-plate", {
         body: { image: imageDataUrl },
       });
-
       if (error) throw error;
-
       const plate = data?.plate?.trim().toUpperCase();
-
       if (!plate) {
         setResult({ plate: null, status: null });
         setStep("result");
         return;
       }
-
-      // Now search the plate in the database
       const { data: vehicle } = await supabase
-        .from("vehicles")
-        .select("*")
-        .eq("plate_number", plate)
-        .maybeSingle();
-
+        .from("vehicles").select("*").eq("plate_number", plate).maybeSingle();
       if (!vehicle) {
-        await supabase.from("scan_logs").insert({
-          plate_number: plate,
-          result: "not_found",
-          scanned_by: user?.id,
-        });
+        await supabase.from("scan_logs").insert({ plate_number: plate, result: "not_found", scanned_by: user?.id });
         setResult({ plate, status: "not_found" });
         setStep("result");
         return;
       }
-
       const { data: fines } = await supabase
-        .from("fines")
-        .select("*")
-        .eq("vehicle_id", vehicle.id)
-        .eq("status", "unpaid");
-
+        .from("fines").select("*").eq("vehicle_id", vehicle.id).eq("status", "unpaid");
       const unpaidFines = fines || [];
       const totalAmount = unpaidFines.reduce((sum, f) => sum + f.amount, 0);
       const status = unpaidFines.length > 0 ? "fine_found" : "no_fine";
-
-      await supabase.from("scan_logs").insert({
-        plate_number: plate,
-        result: status,
-        fines_count: unpaidFines.length,
-        total_amount: totalAmount,
-        scanned_by: user?.id,
-      });
-
+      await supabase.from("scan_logs").insert({ plate_number: plate, result: status, fines_count: unpaidFines.length, total_amount: totalAmount, scanned_by: user?.id });
       setResult({ plate, status, vehicle, fines: unpaidFines, totalAmount });
       setStep("result");
     } catch (err) {
       console.error("OCR error:", err);
-      toast({
-        title: "Erreur de reconnaissance",
-        description: "Impossible de traiter l'image. Réessayez ou utilisez la recherche manuelle.",
-        variant: "destructive",
-      });
+      toast({ title: "Erreur de reconnaissance", description: "Impossible de traiter l'image. Réessayez.", variant: "destructive" });
       setStep("idle");
     }
-  }, [stopCamera, user, toast]);
+  }, [user, toast]);
+
+  const handleGalleryImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      processImageDataUrl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    e.target.value = "";
+  }, [processImageDataUrl]);
 
   const reset = () => {
     setResult(null);
@@ -189,6 +177,21 @@ export default function ScanPlate() {
                     <Camera className="w-5 h-5 mr-2" />
                     Ouvrir la caméra
                   </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full"
+                  >
+                    <ImagePlus className="w-5 h-5 mr-2" />
+                    Importer une photo
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleGalleryImport}
+                  />
                   <Button
                     variant="outline"
                     onClick={() => navigate("/search")}
