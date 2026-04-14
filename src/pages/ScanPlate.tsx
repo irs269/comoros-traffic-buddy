@@ -74,24 +74,6 @@ export default function ScanPlate() {
     return () => stopCamera();
   }, [facingMode]);
 
-  const captureAndProcess = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0);
-
-    stopCamera();
-
-    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
-
-    processImageDataUrl(imageDataUrl);
-  }, [stopCamera, processImageDataUrl]);
-
   const processImageDataUrl = useCallback(async (imageDataUrl: string) => {
     setStep("processing");
     try {
@@ -127,6 +109,20 @@ export default function ScanPlate() {
       setStep("idle");
     }
   }, [user, toast]);
+
+  const captureAndProcess = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    stopCamera();
+    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    processImageDataUrl(imageDataUrl);
+  }, [stopCamera, processImageDataUrl]);
 
   const handleGalleryImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
