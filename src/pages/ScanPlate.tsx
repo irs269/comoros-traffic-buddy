@@ -36,9 +36,6 @@ export default function ScanPlate() {
         video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
       setStep("camera");
     } catch (err) {
       toast({
@@ -61,6 +58,14 @@ export default function ScanPlate() {
     setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
   }, [stopCamera]);
 
+  // Assign stream to video element once it's rendered
+  useEffect(() => {
+    if (step === "camera" && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [step]);
+
+  // Re-start camera when switching front/back
   useEffect(() => {
     if (step === "camera") {
       startCamera();
