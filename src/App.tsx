@@ -15,6 +15,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminVehicles from "./pages/admin/Vehicles";
 import AdminFines from "./pages/admin/Fines";
 import AdminUsers from "./pages/admin/Users";
+import ScanPlate from "./pages/ScanPlate";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/search" element={<ProtectedRoute><PlateSearch /></ProtectedRoute>} />
             <Route path="/add-fine" element={<ProtectedRoute><AddFine /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><ScanHistory /></ProtectedRoute>} />
+            <Route path="/scan" element={<ProtectedRoute><ScanPlate /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminDashboard /></AdminRoute></ProtectedRoute>} />
             <Route path="/admin/vehicles" element={<ProtectedRoute><AdminRoute><AdminVehicles /></AdminRoute></ProtectedRoute>} />
             <Route path="/admin/fines" element={<ProtectedRoute><AdminRoute><AdminFines /></AdminRoute></ProtectedRoute>} />

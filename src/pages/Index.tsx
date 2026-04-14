@@ -7,7 +7,7 @@ const actions = [
   { to: "/search", icon: Search, label: "Rechercher\nPlaque", color: "bg-primary text-primary-foreground" },
   { to: "/add-fine", icon: PlusCircle, label: "Nouvelle\nAmende", color: "bg-warning text-warning-foreground" },
   { to: "/history", icon: History, label: "Historique\nRecherches", color: "bg-secondary text-secondary-foreground" },
-  { to: "/scan", icon: Camera, label: "Scanner\n(Bientôt)", color: "bg-muted text-muted-foreground", disabled: true },
+  { to: "/scan", icon: Camera, label: "Scanner\nPlaque", color: "bg-accent text-accent-foreground" },
 ];
 
 export default function OfficerHome() {
