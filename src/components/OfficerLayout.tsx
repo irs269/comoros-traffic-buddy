@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Search, PlusCircle, History, LogOut, Shield, LayoutDashboard } from "lucide-react";
+import { Home, Search, PlusCircle, History, LogOut, Shield, LayoutDashboard, Banknote } from "lucide-react";
 
 const navItems = [
   { to: "/", icon: Home, label: "Accueil" },
@@ -23,9 +23,19 @@ export default function OfficerLayout({ children }: { children: ReactNode }) {
           <span className="font-bold text-lg">STFS</span>
         </div>
         <div className="flex items-center gap-2">
-          {role === "admin" && (
+          {role === "super_admin" && (
+            <Link to="/super-admin" className="p-2 rounded-lg hover:bg-accent transition-colors">
+              <Shield className="w-5 h-5 text-muted-foreground" />
+            </Link>
+          )}
+          {(role === "admin" || role === "super_admin") && (
             <Link to="/admin" className="p-2 rounded-lg hover:bg-accent transition-colors">
               <LayoutDashboard className="w-5 h-5 text-muted-foreground" />
+            </Link>
+          )}
+          {(role === "cashier" || role === "admin" || role === "super_admin") && (
+            <Link to="/cashier" className="p-2 rounded-lg hover:bg-accent transition-colors">
+              <Banknote className="w-5 h-5 text-muted-foreground" />
             </Link>
           )}
           <button onClick={signOut} className="p-2 rounded-lg hover:bg-accent transition-colors">
