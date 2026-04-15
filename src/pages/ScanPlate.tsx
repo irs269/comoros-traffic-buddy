@@ -141,6 +141,17 @@ export default function ScanPlate() {
   const captureAndProcess = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
+
+    // Wait until video has actual dimensions (stream fully ready)
+    if (!video.videoWidth || !video.videoHeight) {
+      toast({
+        title: "Caméra pas prête",
+        description: "Attendez que l'image apparaisse puis réessayez.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -149,8 +160,20 @@ export default function ScanPlate() {
     ctx.drawImage(video, 0, 0);
     stopCamera();
     const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+
+    // Safety check: ensure we got a real image
+    if (!imageDataUrl || imageDataUrl === "data:," || imageDataUrl.length < 100) {
+      toast({
+        title: "Capture échouée",
+        description: "L'image capturée est vide. Réessayez.",
+        variant: "destructive",
+      });
+      setStep("idle");
+      return;
+    }
+
     processImageDataUrl(imageDataUrl);
-  }, [stopCamera, processImageDataUrl]);
+  }, [stopCamera, processImageDataUrl, toast]);
 
   const handleGalleryImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
