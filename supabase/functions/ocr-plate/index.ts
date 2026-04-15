@@ -16,8 +16,8 @@ Deno.serve(async (req) => {
   try {
     const { image } = await req.json();
 
-    if (!image) {
-      return new Response(JSON.stringify({ error: "No image provided" }), {
+    if (!image || image === "data:," || image.length < 100) {
+      return new Response(JSON.stringify({ error: "No valid image provided", plate: null, raw: "NO_IMAGE" }), {
         status: 400,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
