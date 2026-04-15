@@ -31,48 +31,76 @@ export default function ScanPlate() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const startCamera = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      streamRef.current = stream;
-      setStep("camera");
-    } catch (err) {
-      toast({
-        title: "Erreur caméra",
-        description: "Impossible d'accéder à la caméra. Vérifiez les permissions.",
-        variant: "destructive",
-      });
-    }
-  }, [facingMode, toast]);
-
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   }, []);
 
+  const attachStreamToVideo = useCallback(async (stream: MediaStream) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.srcObject = stream;
+
+    try {
+      await video.play();
+    } catch (error) {
+      console.error("Video preview error:", error);
+    }
+  }, []);
+
+  const openCamera = useCallback(async (mode: "environment" | "user") => {
+    try {
+      stopCamera();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: mode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+      setFacingMode(mode);
+      setStep("camera");
+
+      requestAnimationFrame(() => {
+        void attachStreamToVideo(stream);
+      });
+    } catch (error) {
+      console.error("Camera access error:", error);
+      toast({
+        title: "Erreur caméra",
+        description: "Impossible d'afficher la caméra. Vérifiez les permissions puis réessayez.",
+        variant: "destructive",
+      });
+    }
+  }, [attachStreamToVideo, stopCamera, toast]);
+
+  const startCamera = useCallback(() => {
+    void openCamera(facingMode);
+  }, [facingMode, openCamera]);
+
   const switchCamera = useCallback(() => {
-    stopCamera();
-    setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
-  }, [stopCamera]);
+    const nextMode = facingMode === "environment" ? "user" : "environment";
+    void openCamera(nextMode);
+  }, [facingMode, openCamera]);
 
-  // Assign stream to video element once it's rendered
   useEffect(() => {
-    if (step === "camera" && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
+    if (step === "camera" && streamRef.current) {
+      void attachStreamToVideo(streamRef.current);
     }
-  }, [step]);
 
-  // Re-start camera when switching front/back
-  useEffect(() => {
-    if (step === "camera") {
-      startCamera();
-    }
     return () => stopCamera();
-  }, [facingMode]);
+  }, [attachStreamToVideo, step, stopCamera]);
 
   const processImageDataUrl = useCallback(async (imageDataUrl: string) => {
     setStep("processing");
