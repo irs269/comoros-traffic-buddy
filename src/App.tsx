@@ -16,6 +16,11 @@ import AdminVehicles from "./pages/admin/Vehicles";
 import AdminFines from "./pages/admin/Fines";
 import AdminUsers from "./pages/admin/Users";
 import ScanPlate from "./pages/ScanPlate";
+import CashierSearchFine from "./pages/cashier/SearchFine";
+import PaymentHistory from "./pages/cashier/PaymentHistory";
+import SuperAdminDashboard from "./pages/superadmin/Dashboard";
+import ManageUsers from "./pages/superadmin/ManageUsers";
+import AllPayments from "./pages/superadmin/AllPayments";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,7 +35,21 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 function AdminRoute({ children }: { children: ReactNode }) {
   const { role, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
-  if (role !== "admin") return <Navigate to="/" replace />;
+  if (role !== "admin" && role !== "super_admin") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function CashierRoute({ children }: { children: ReactNode }) {
+  const { role, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+  if (role !== "cashier" && role !== "admin" && role !== "super_admin") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function SuperAdminRoute({ children }: { children: ReactNode }) {
+  const { role, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+  if (role !== "super_admin") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -43,15 +62,25 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            {/* Officer routes */}
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/search" element={<ProtectedRoute><PlateSearch /></ProtectedRoute>} />
             <Route path="/add-fine" element={<ProtectedRoute><AddFine /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><ScanHistory /></ProtectedRoute>} />
             <Route path="/scan" element={<ProtectedRoute><ScanPlate /></ProtectedRoute>} />
+            {/* Cashier routes */}
+            <Route path="/cashier" element={<ProtectedRoute><CashierRoute><CashierSearchFine /></CashierRoute></ProtectedRoute>} />
+            <Route path="/cashier/payments" element={<ProtectedRoute><CashierRoute><PaymentHistory /></CashierRoute></ProtectedRoute>} />
+            <Route path="/cashier/history" element={<ProtectedRoute><CashierRoute><PaymentHistory /></CashierRoute></ProtectedRoute>} />
+            {/* Admin routes */}
             <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminDashboard /></AdminRoute></ProtectedRoute>} />
             <Route path="/admin/vehicles" element={<ProtectedRoute><AdminRoute><AdminVehicles /></AdminRoute></ProtectedRoute>} />
             <Route path="/admin/fines" element={<ProtectedRoute><AdminRoute><AdminFines /></AdminRoute></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminRoute><AdminUsers /></AdminRoute></ProtectedRoute>} />
+            {/* Super admin routes */}
+            <Route path="/super-admin" element={<ProtectedRoute><SuperAdminRoute><SuperAdminDashboard /></SuperAdminRoute></ProtectedRoute>} />
+            <Route path="/super-admin/users" element={<ProtectedRoute><SuperAdminRoute><ManageUsers /></SuperAdminRoute></ProtectedRoute>} />
+            <Route path="/super-admin/payments" element={<ProtectedRoute><SuperAdminRoute><AllPayments /></SuperAdminRoute></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

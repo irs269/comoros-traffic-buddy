@@ -1,18 +1,29 @@
 import { ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Car, FileText, Users, ArrowLeft, LogOut, Shield } from "lucide-react";
+import { LayoutDashboard, Car, FileText, Users, ArrowLeft, LogOut, Shield, Banknote } from "lucide-react";
 
-const sidebarItems = [
+const adminItems = [
   { to: "/admin", icon: LayoutDashboard, label: "Tableau de bord" },
   { to: "/admin/vehicles", icon: Car, label: "Véhicules" },
   { to: "/admin/fines", icon: FileText, label: "Amendes" },
   { to: "/admin/users", icon: Users, label: "Utilisateurs" },
 ];
 
+const superAdminItems = [
+  { to: "/super-admin", icon: Shield, label: "Super Admin" },
+  { to: "/super-admin/users", icon: Users, label: "Gestion rôles" },
+  { to: "/super-admin/payments", icon: Banknote, label: "Paiements" },
+];
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { signOut } = useAuth();
+  const { signOut, role } = useAuth();
   const location = useLocation();
+
+  const sidebarItems = [
+    ...adminItems,
+    ...(role === "super_admin" ? superAdminItems : []),
+  ];
 
   return (
     <div className="min-h-screen flex bg-background">

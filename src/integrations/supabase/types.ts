@@ -73,6 +73,50 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount_paid: number
+          collected_by: string
+          created_at: string
+          fine_id: string
+          id: string
+          notes: string | null
+          paid_by_name: string
+          payment_method: string
+          receipt_number: string
+        }
+        Insert: {
+          amount_paid: number
+          collected_by: string
+          created_at?: string
+          fine_id: string
+          id?: string
+          notes?: string | null
+          paid_by_name: string
+          payment_method?: string
+          receipt_number?: string
+        }
+        Update: {
+          amount_paid?: number
+          collected_by?: string
+          created_at?: string
+          fine_id?: string
+          id?: string
+          notes?: string | null
+          paid_by_name?: string
+          payment_method?: string
+          receipt_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_fine_id_fkey"
+            columns: ["fine_id"]
+            isOneToOne: false
+            referencedRelation: "fines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           badge_number: string | null
@@ -198,7 +242,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "officer"
+      app_role: "admin" | "officer" | "cashier" | "super_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -326,7 +370,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "officer"],
+      app_role: ["admin", "officer", "cashier", "super_admin"],
     },
   },
 } as const
