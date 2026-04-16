@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useState, useEffect } from "react";
+import { useAuth, AppRole } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,15 +8,31 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Shield, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+function getRedirectPath(role: AppRole | null): string {
+  switch (role) {
+    case "super_admin": return "/super-admin";
+    case "admin": return "/admin";
+    case "cashier": return "/cashier";
+    default: return "/";
+  }
+}
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, session, role } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session && role) {
+      navigate(getRedirectPath(role), { replace: true });
+    }
+  }, [session, role, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +43,7 @@ export default function Login() {
         toast({ title: "Compte créé", description: "Vérifiez votre email pour confirmer." });
       } else {
         await signIn(email, password);
-        navigate("/");
+        // Role will be fetched by useAuth, then useEffect redirects
       }
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
