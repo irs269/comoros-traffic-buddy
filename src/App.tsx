@@ -21,6 +21,8 @@ import PaymentHistory from "./pages/cashier/PaymentHistory";
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 import ManageUsers from "./pages/superadmin/ManageUsers";
 import AllPayments from "./pages/superadmin/AllPayments";
+import PendingFines from "./pages/gendarmerie/PendingFines";
+import ProcessedFines from "./pages/gendarmerie/ProcessedFines";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +55,13 @@ function SuperAdminRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function GendarmerieRoute({ children }: { children: ReactNode }) {
+  const { role, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+  if (role !== "gendarmerie" && role !== "admin" && role !== "super_admin") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -77,6 +86,10 @@ const App = () => (
             <Route path="/admin/vehicles" element={<ProtectedRoute><AdminRoute><AdminVehicles /></AdminRoute></ProtectedRoute>} />
             <Route path="/admin/fines" element={<ProtectedRoute><AdminRoute><AdminFines /></AdminRoute></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminRoute><AdminUsers /></AdminRoute></ProtectedRoute>} />
+            {/* Super admin routes */}
+            {/* Gendarmerie routes */}
+            <Route path="/gendarmerie" element={<ProtectedRoute><GendarmerieRoute><PendingFines /></GendarmerieRoute></ProtectedRoute>} />
+            <Route path="/gendarmerie/processed" element={<ProtectedRoute><GendarmerieRoute><ProcessedFines /></GendarmerieRoute></ProtectedRoute>} />
             {/* Super admin routes */}
             <Route path="/super-admin" element={<ProtectedRoute><SuperAdminRoute><SuperAdminDashboard /></SuperAdminRoute></ProtectedRoute>} />
             <Route path="/super-admin/users" element={<ProtectedRoute><SuperAdminRoute><ManageUsers /></SuperAdminRoute></ProtectedRoute>} />
