@@ -13,6 +13,7 @@ function getRedirectPath(role: AppRole | null): string {
     case "super_admin": return "/super-admin";
     case "admin": return "/admin";
     case "cashier": return "/cashier";
+    case "gendarmerie": return "/gendarmerie";
     default: return "/";
   }
 }
