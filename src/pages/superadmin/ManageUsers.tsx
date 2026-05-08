@@ -21,6 +21,7 @@ interface UserWithRole {
 const roleLabels: Record<AppRole, string> = {
   super_admin: "Super Admin",
   admin: "Administrateur",
+  gendarmerie: "Gendarmerie",
   cashier: "Caissier",
   officer: "Agent",
 };
@@ -28,6 +29,7 @@ const roleLabels: Record<AppRole, string> = {
 const roleBadgeColors: Record<AppRole, string> = {
   super_admin: "bg-primary text-primary-foreground",
   admin: "bg-warning text-warning-foreground",
+  gendarmerie: "bg-danger text-danger-foreground",
   cashier: "bg-success text-success-foreground",
   officer: "bg-secondary text-secondary-foreground",
 };
@@ -111,6 +113,7 @@ export default function ManageUsers() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="officer">Agent</SelectItem>
+                      <SelectItem value="gendarmerie">Gendarmerie</SelectItem>
                       <SelectItem value="cashier">Caissier</SelectItem>
                       <SelectItem value="admin">Administrateur</SelectItem>
                       <SelectItem value="super_admin">Super Admin</SelectItem>

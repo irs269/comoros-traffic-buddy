@@ -27,7 +27,6 @@ export default function AddFine() {
   const [plateNumber, setPlateNumber] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [violationType, setViolationType] = useState("");
-  const [amount, setAmount] = useState("");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,7 +36,7 @@ export default function AddFine() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!plateNumber || !ownerName || !violationType || !amount) return;
+    if (!plateNumber || !ownerName || !violationType) return;
 
     setLoading(true);
     const normalizedPlate = plateNumber.trim().toUpperCase();
@@ -68,7 +67,8 @@ export default function AddFine() {
       plate_number: normalizedPlate,
       owner_name: ownerName,
       violation_type: violationType,
-      amount: parseInt(amount),
+      amount: null,
+      status: "pending_amount",
       location: location || null,
       notes: notes || null,
       issued_by: user?.id,
@@ -83,7 +83,6 @@ export default function AddFine() {
         setPlateNumber("");
         setOwnerName("");
         setViolationType("");
-        setAmount("");
         setLocation("");
         setNotes("");
       }, 2000);
@@ -126,9 +125,8 @@ export default function AddFine() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Montant (KMF) *</Label>
-            <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="25000" required min={0} />
+          <div className="rounded-lg bg-muted/50 border p-3 text-sm text-muted-foreground">
+            ℹ️ Le montant de l'amende sera fixé par la Gendarmerie après votre déclaration.
           </div>
           <div className="space-y-2">
             <Label>Lieu</Label>

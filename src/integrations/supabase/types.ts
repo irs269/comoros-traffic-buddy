@@ -16,7 +16,9 @@ export type Database = {
     Tables: {
       fines: {
         Row: {
-          amount: number
+          amount: number | null
+          amount_set_at: string | null
+          amount_set_by: string | null
           created_at: string
           id: string
           issued_at: string
@@ -32,7 +34,9 @@ export type Database = {
           violation_type: string
         }
         Insert: {
-          amount: number
+          amount?: number | null
+          amount_set_at?: string | null
+          amount_set_by?: string | null
           created_at?: string
           id?: string
           issued_at?: string
@@ -48,7 +52,9 @@ export type Database = {
           violation_type: string
         }
         Update: {
-          amount?: number
+          amount?: number | null
+          amount_set_at?: string | null
+          amount_set_by?: string | null
           created_at?: string
           id?: string
           issued_at?: string
@@ -242,7 +248,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "officer" | "cashier" | "super_admin"
+      app_role: "admin" | "officer" | "cashier" | "super_admin" | "gendarmerie"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -370,7 +376,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "officer", "cashier", "super_admin"],
+      app_role: ["admin", "officer", "cashier", "super_admin", "gendarmerie"],
     },
   },
 } as const
