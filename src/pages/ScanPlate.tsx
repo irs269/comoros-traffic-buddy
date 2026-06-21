@@ -358,13 +358,12 @@ export default function ScanPlate() {
               </div>
               <div className="flex items-center justify-center gap-2 text-sm text-primary">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Détection automatique en cours… alignez la plaque dans le cadre</span>
+                <span>Détection temps réel… alignez la plaque dans le cadre</span>
               </div>
-              {attempts > 0 && (
-                <p className="text-center text-xs text-muted-foreground">
-                  Tentatives : {attempts} — rapprochez-vous ou améliorez l'éclairage si rien n'est détecté.
-                </p>
-              )}
+              <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+                {lastMs !== null && <span>Latence : <b className="text-foreground">{lastMs} ms</b></span>}
+                {attempts > 0 && <span>Tentatives : {attempts}</span>}
+              </div>
             </motion.div>
           )}
 
