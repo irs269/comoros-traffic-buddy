@@ -326,12 +326,15 @@ export default function ScanPlate() {
                   </button>
                 </div>
               </div>
-              <p className="text-center text-sm text-muted-foreground">
-                Alignez la plaque dans le cadre puis capturez
-              </p>
-              <Button onClick={captureAndProcess} size="lg" className="w-full h-14 text-lg">
-                📸 Capturer
-              </Button>
+              <div className="flex items-center justify-center gap-2 text-sm text-primary">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Détection automatique en cours… alignez la plaque dans le cadre</span>
+              </div>
+              {attempts > 0 && (
+                <p className="text-center text-xs text-muted-foreground">
+                  Tentatives : {attempts} — rapprochez-vous ou améliorez l'éclairage si rien n'est détecté.
+                </p>
+              )}
             </motion.div>
           )}
 
