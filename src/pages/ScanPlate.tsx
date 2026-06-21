@@ -23,15 +23,24 @@ export default function ScanPlate() {
   const [step, setStep] = useState<ScanStep>("idle");
   const [result, setResult] = useState<ScanResult | null>(null);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [attempts, setAttempts] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scanIntervalRef = useRef<number | null>(null);
+  const scanningRef = useRef(false);
+  const stoppedRef = useRef(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const stopCamera = useCallback(() => {
+    stoppedRef.current = true;
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -58,6 +67,8 @@ export default function ScanPlate() {
   const openCamera = useCallback(async (mode: "environment" | "user") => {
     try {
       stopCamera();
+      stoppedRef.current = false;
+      setAttempts(0);
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -102,19 +113,8 @@ export default function ScanPlate() {
     return () => stopCamera();
   }, [attachStreamToVideo, step, stopCamera]);
 
-  const processImageDataUrl = useCallback(async (imageDataUrl: string) => {
-    setStep("processing");
+  const lookupPlate = useCallback(async (plate: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke("ocr-plate", {
-        body: { image: imageDataUrl },
-      });
-      if (error) throw error;
-      const plate = data?.plate?.trim().toUpperCase();
-      if (!plate) {
-        setResult({ plate: null, status: null });
-        setStep("result");
-        return;
-      }
       const { data: vehicle } = await supabase
         .from("vehicles").select("*").eq("plate_number", plate).maybeSingle();
       if (!vehicle) {
@@ -132,48 +132,86 @@ export default function ScanPlate() {
       setResult({ plate, status, vehicle, fines: unpaidFines, totalAmount });
       setStep("result");
     } catch (err) {
-      console.error("OCR error:", err);
-      toast({ title: "Erreur de reconnaissance", description: "Impossible de traiter l'image. Réessayez.", variant: "destructive" });
+      console.error("Lookup error:", err);
+      toast({ title: "Erreur", description: "Impossible de chercher la plaque.", variant: "destructive" });
       setStep("idle");
     }
   }, [user, toast]);
 
-  const captureAndProcess = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const video = videoRef.current;
-
-    // Wait until video has actual dimensions (stream fully ready)
-    if (!video.videoWidth || !video.videoHeight) {
-      toast({
-        title: "Caméra pas prête",
-        description: "Attendez que l'image apparaisse puis réessayez.",
-        variant: "destructive",
+  const processImageDataUrl = useCallback(async (imageDataUrl: string) => {
+    setStep("processing");
+    try {
+      const { data, error } = await supabase.functions.invoke("ocr-plate", {
+        body: { image: imageDataUrl },
       });
-      return;
+      if (error) throw error;
+      const plate = data?.plate?.trim().toUpperCase();
+      if (!plate) {
+        setResult({ plate: null, status: null });
+        setStep("result");
+        return;
+      }
+      await lookupPlate(plate);
+    } catch (err) {
+      console.error("OCR error:", err);
+      toast({ title: "Erreur de reconnaissance", description: "Impossible de traiter l'image. Réessayez.", variant: "destructive" });
+      setStep("idle");
     }
+  }, [lookupPlate, toast]);
 
+  const grabFrameDataUrl = useCallback((): string | null => {
+    const video = videoRef.current;
     const canvas = canvasRef.current;
+    if (!video || !canvas) return null;
+    if (!video.videoWidth || !video.videoHeight) return null;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) return null;
     ctx.drawImage(video, 0, 0);
-    stopCamera();
-    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    const url = canvas.toDataURL("image/jpeg", 0.7);
+    if (!url || url.length < 100) return null;
+    return url;
+  }, []);
 
-    // Safety check: ensure we got a real image
-    if (!imageDataUrl || imageDataUrl === "data:," || imageDataUrl.length < 100) {
-      toast({
-        title: "Capture échouée",
-        description: "L'image capturée est vide. Réessayez.",
-        variant: "destructive",
-      });
-      setStep("idle");
-      return;
-    }
+  // Auto-scan: continuously analyze frames while camera is open
+  useEffect(() => {
+    if (step !== "camera") return;
 
-    processImageDataUrl(imageDataUrl);
-  }, [stopCamera, processImageDataUrl, toast]);
+    const tick = async () => {
+      if (scanningRef.current || stoppedRef.current) return;
+      const url = grabFrameDataUrl();
+      if (!url) return;
+      scanningRef.current = true;
+      try {
+        const { data, error } = await supabase.functions.invoke("ocr-plate", {
+          body: { image: url },
+        });
+        if (stoppedRef.current) return;
+        if (error) throw error;
+        const plate = data?.plate?.trim().toUpperCase();
+        if (plate) {
+          stopCamera();
+          setStep("processing");
+          await lookupPlate(plate);
+        } else {
+          setAttempts((a) => a + 1);
+        }
+      } catch (err) {
+        console.error("Auto-scan error:", err);
+      } finally {
+        scanningRef.current = false;
+      }
+    };
+
+    scanIntervalRef.current = window.setInterval(tick, 2000);
+    return () => {
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current);
+        scanIntervalRef.current = null;
+      }
+    };
+  }, [step, grabFrameDataUrl, lookupPlate, stopCamera]);
 
   const handleGalleryImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -217,12 +255,12 @@ export default function ScanPlate() {
                   <div>
                     <p className="font-semibold text-lg">Scanner une plaque</p>
                     <p className="text-sm text-muted-foreground">
-                      Prenez une photo de la plaque d'immatriculation pour vérifier les amendes
+                      La caméra détecte automatiquement la plaque en temps réel, sans capture manuelle.
                     </p>
                   </div>
                   <Button onClick={startCamera} size="lg" className="w-full">
                     <Camera className="w-5 h-5 mr-2" />
-                    Ouvrir la caméra
+                    Démarrer la détection
                   </Button>
                   <Button
                     variant="secondary"
@@ -288,12 +326,15 @@ export default function ScanPlate() {
                   </button>
                 </div>
               </div>
-              <p className="text-center text-sm text-muted-foreground">
-                Alignez la plaque dans le cadre puis capturez
-              </p>
-              <Button onClick={captureAndProcess} size="lg" className="w-full h-14 text-lg">
-                📸 Capturer
-              </Button>
+              <div className="flex items-center justify-center gap-2 text-sm text-primary">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Détection automatique en cours… alignez la plaque dans le cadre</span>
+              </div>
+              {attempts > 0 && (
+                <p className="text-center text-xs text-muted-foreground">
+                  Tentatives : {attempts} — rapprochez-vous ou améliorez l'éclairage si rien n'est détecté.
+                </p>
+              )}
             </motion.div>
           )}
 
