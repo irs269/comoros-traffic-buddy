@@ -67,6 +67,8 @@ export default function ScanPlate() {
   const openCamera = useCallback(async (mode: "environment" | "user") => {
     try {
       stopCamera();
+      stoppedRef.current = false;
+      setAttempts(0);
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
