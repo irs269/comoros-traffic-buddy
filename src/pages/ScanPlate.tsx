@@ -23,15 +23,24 @@ export default function ScanPlate() {
   const [step, setStep] = useState<ScanStep>("idle");
   const [result, setResult] = useState<ScanResult | null>(null);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [attempts, setAttempts] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scanIntervalRef = useRef<number | null>(null);
+  const scanningRef = useRef(false);
+  const stoppedRef = useRef(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const stopCamera = useCallback(() => {
+    stoppedRef.current = true;
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
