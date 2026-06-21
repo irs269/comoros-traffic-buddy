@@ -126,6 +126,8 @@ export default function ScanPlate() {
         setStep("result");
         return;
       }
+  const lookupPlate = useCallback(async (plate: string) => {
+    try {
       const { data: vehicle } = await supabase
         .from("vehicles").select("*").eq("plate_number", plate).maybeSingle();
       if (!vehicle) {
@@ -143,48 +145,86 @@ export default function ScanPlate() {
       setResult({ plate, status, vehicle, fines: unpaidFines, totalAmount });
       setStep("result");
     } catch (err) {
-      console.error("OCR error:", err);
-      toast({ title: "Erreur de reconnaissance", description: "Impossible de traiter l'image. Réessayez.", variant: "destructive" });
+      console.error("Lookup error:", err);
+      toast({ title: "Erreur", description: "Impossible de chercher la plaque.", variant: "destructive" });
       setStep("idle");
     }
   }, [user, toast]);
 
-  const captureAndProcess = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const video = videoRef.current;
-
-    // Wait until video has actual dimensions (stream fully ready)
-    if (!video.videoWidth || !video.videoHeight) {
-      toast({
-        title: "Caméra pas prête",
-        description: "Attendez que l'image apparaisse puis réessayez.",
-        variant: "destructive",
+  const processImageDataUrl = useCallback(async (imageDataUrl: string) => {
+    setStep("processing");
+    try {
+      const { data, error } = await supabase.functions.invoke("ocr-plate", {
+        body: { image: imageDataUrl },
       });
-      return;
+      if (error) throw error;
+      const plate = data?.plate?.trim().toUpperCase();
+      if (!plate) {
+        setResult({ plate: null, status: null });
+        setStep("result");
+        return;
+      }
+      await lookupPlate(plate);
+    } catch (err) {
+      console.error("OCR error:", err);
+      toast({ title: "Erreur de reconnaissance", description: "Impossible de traiter l'image. Réessayez.", variant: "destructive" });
+      setStep("idle");
     }
+  }, [lookupPlate, toast]);
 
+  const grabFrameDataUrl = useCallback((): string | null => {
+    const video = videoRef.current;
     const canvas = canvasRef.current;
+    if (!video || !canvas) return null;
+    if (!video.videoWidth || !video.videoHeight) return null;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) return null;
     ctx.drawImage(video, 0, 0);
-    stopCamera();
-    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    const url = canvas.toDataURL("image/jpeg", 0.7);
+    if (!url || url.length < 100) return null;
+    return url;
+  }, []);
 
-    // Safety check: ensure we got a real image
-    if (!imageDataUrl || imageDataUrl === "data:," || imageDataUrl.length < 100) {
-      toast({
-        title: "Capture échouée",
-        description: "L'image capturée est vide. Réessayez.",
-        variant: "destructive",
-      });
-      setStep("idle");
-      return;
-    }
+  // Auto-scan: continuously analyze frames while camera is open
+  useEffect(() => {
+    if (step !== "camera") return;
 
-    processImageDataUrl(imageDataUrl);
-  }, [stopCamera, processImageDataUrl, toast]);
+    const tick = async () => {
+      if (scanningRef.current || stoppedRef.current) return;
+      const url = grabFrameDataUrl();
+      if (!url) return;
+      scanningRef.current = true;
+      try {
+        const { data, error } = await supabase.functions.invoke("ocr-plate", {
+          body: { image: url },
+        });
+        if (stoppedRef.current) return;
+        if (error) throw error;
+        const plate = data?.plate?.trim().toUpperCase();
+        if (plate) {
+          stopCamera();
+          setStep("processing");
+          await lookupPlate(plate);
+        } else {
+          setAttempts((a) => a + 1);
+        }
+      } catch (err) {
+        console.error("Auto-scan error:", err);
+      } finally {
+        scanningRef.current = false;
+      }
+    };
+
+    scanIntervalRef.current = window.setInterval(tick, 2000);
+    return () => {
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current);
+        scanIntervalRef.current = null;
+      }
+    };
+  }, [step, grabFrameDataUrl, lookupPlate, stopCamera]);
 
   const handleGalleryImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
