@@ -113,19 +113,6 @@ export default function ScanPlate() {
     return () => stopCamera();
   }, [attachStreamToVideo, step, stopCamera]);
 
-  const processImageDataUrl = useCallback(async (imageDataUrl: string) => {
-    setStep("processing");
-    try {
-      const { data, error } = await supabase.functions.invoke("ocr-plate", {
-        body: { image: imageDataUrl },
-      });
-      if (error) throw error;
-      const plate = data?.plate?.trim().toUpperCase();
-      if (!plate) {
-        setResult({ plate: null, status: null });
-        setStep("result");
-        return;
-      }
   const lookupPlate = useCallback(async (plate: string) => {
     try {
       const { data: vehicle } = await supabase
