@@ -255,12 +255,12 @@ export default function ScanPlate() {
                   <div>
                     <p className="font-semibold text-lg">Scanner une plaque</p>
                     <p className="text-sm text-muted-foreground">
-                      Prenez une photo de la plaque d'immatriculation pour vérifier les amendes
+                      La caméra détecte automatiquement la plaque en temps réel, sans capture manuelle.
                     </p>
                   </div>
                   <Button onClick={startCamera} size="lg" className="w-full">
                     <Camera className="w-5 h-5 mr-2" />
-                    Ouvrir la caméra
+                    Démarrer la détection
                   </Button>
                   <Button
                     variant="secondary"
