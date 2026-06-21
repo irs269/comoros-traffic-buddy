@@ -161,56 +161,84 @@ export default function ScanPlate() {
     }
   }, [lookupPlate, toast]);
 
+  // Grab a small, cropped ROI (the plate guide band) — keeps payload tiny for fast OCR
   const grabFrameDataUrl = useCallback((): string | null => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return null;
-    if (!video.videoWidth || !video.videoHeight) return null;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    if (!vw || !vh) return null;
+    // ROI: center 80% width, ~22% height band (matches on-screen plate guide)
+    const roiW = Math.round(vw * 0.8);
+    const roiH = Math.round(vh * 0.22);
+    const sx = Math.round((vw - roiW) / 2);
+    const sy = Math.round((vh - roiH) / 2);
+    // Downscale to max width 640 — reduces network + OCR time dramatically
+    const targetW = Math.min(640, roiW);
+    const targetH = Math.round((roiH / roiW) * targetW);
+    canvas.width = targetW;
+    canvas.height = targetH;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    ctx.drawImage(video, 0, 0);
-    const url = canvas.toDataURL("image/jpeg", 0.7);
+    ctx.drawImage(video, sx, sy, roiW, roiH, 0, 0, targetW, targetH);
+    const url = canvas.toDataURL("image/jpeg", 0.55);
     if (!url || url.length < 100) return null;
     return url;
   }, []);
 
-  // Auto-scan: continuously analyze frames while camera is open
+  // Auto-scan: continuous low-latency loop, double-confirmation for precision
   useEffect(() => {
     if (step !== "camera") return;
+    let cancelled = false;
 
     const tick = async () => {
-      if (scanningRef.current || stoppedRef.current) return;
-      const url = grabFrameDataUrl();
-      if (!url) return;
-      scanningRef.current = true;
-      try {
-        const { data, error } = await supabase.functions.invoke("ocr-plate", {
-          body: { image: url },
-        });
-        if (stoppedRef.current) return;
-        if (error) throw error;
-        const plate = data?.plate?.trim().toUpperCase();
-        if (plate) {
-          stopCamera();
-          setStep("processing");
-          await lookupPlate(plate);
-        } else {
-          setAttempts((a) => a + 1);
+      if (cancelled || stoppedRef.current) return;
+      if (!scanningRef.current) {
+        const url = grabFrameDataUrl();
+        if (url) {
+          scanningRef.current = true;
+          const t0 = performance.now();
+          try {
+            const { data, error } = await supabase.functions.invoke("ocr-plate", {
+              body: { image: url },
+            });
+            const dt = Math.round(performance.now() - t0);
+            if (!cancelled && !stoppedRef.current) setLastMs(dt);
+            if (cancelled || stoppedRef.current) return;
+            if (error) throw error;
+            const plate = data?.plate?.trim().toUpperCase();
+            if (plate) {
+              // Require 2 consecutive identical reads for precision
+              if (lastPlateRef.current === plate) {
+                stopCamera();
+                setStep("processing");
+                await lookupPlate(plate);
+                return;
+              }
+              lastPlateRef.current = plate;
+            } else {
+              lastPlateRef.current = null;
+              setAttempts((a) => a + 1);
+            }
+          } catch (err) {
+            console.error("Auto-scan error:", err);
+          } finally {
+            scanningRef.current = false;
+          }
         }
-      } catch (err) {
-        console.error("Auto-scan error:", err);
-      } finally {
-        scanningRef.current = false;
+      }
+      if (!cancelled && !stoppedRef.current) {
+        scanLoopRef.current = requestAnimationFrame(tick);
       }
     };
 
-    scanIntervalRef.current = window.setInterval(tick, 2000);
+    scanLoopRef.current = requestAnimationFrame(tick);
     return () => {
-      if (scanIntervalRef.current) {
-        clearInterval(scanIntervalRef.current);
-        scanIntervalRef.current = null;
+      cancelled = true;
+      if (scanLoopRef.current) {
+        cancelAnimationFrame(scanLoopRef.current);
+        scanLoopRef.current = null;
       }
     };
   }, [step, grabFrameDataUrl, lookupPlate, stopCamera]);
