@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">STFS Comoros</string>
+    <string name="title_activity_main">STFS Comoros</string>
+    <string name="package_name">com.stfs.comoros</string>
+    <string name="custom_url_scheme">com.stfs.comoros</string>
+</resources>

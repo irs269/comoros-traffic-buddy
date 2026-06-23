@@ -77,6 +77,8 @@ export default function ScanPlate() {
           facingMode: { ideal: mode },
           width: { ideal: 1280 },
           height: { ideal: 720 },
+          // Optimized for moving vehicles: higher frame rate
+          frameRate: { ideal: 30, max: 60 },
         },
         audio: false,
       });
@@ -169,28 +171,30 @@ export default function ScanPlate() {
     const vw = video.videoWidth;
     const vh = video.videoHeight;
     if (!vw || !vh) return null;
-    // ROI: center 80% width, ~22% height band (matches on-screen plate guide)
-    const roiW = Math.round(vw * 0.8);
-    const roiH = Math.round(vh * 0.22);
+    // ROI: center 75% width, ~20% height band (more focused on plate area)
+    const roiW = Math.round(vw * 0.75);
+    const roiH = Math.round(vh * 0.20);
     const sx = Math.round((vw - roiW) / 2);
     const sy = Math.round((vh - roiH) / 2);
-    // Downscale to max width 640 — reduces network + OCR time dramatically
-    const targetW = Math.min(640, roiW);
+    // Downscale to max width 480 — faster processing while maintaining readability
+    const targetW = Math.min(480, roiW);
     const targetH = Math.round((roiH / roiW) * targetW);
     canvas.width = targetW;
     canvas.height = targetH;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
     ctx.drawImage(video, sx, sy, roiW, roiH, 0, 0, targetW, targetH);
-    const url = canvas.toDataURL("image/jpeg", 0.55);
+    const url = canvas.toDataURL("image/jpeg", 0.4);
     if (!url || url.length < 100) return null;
     return url;
   }, []);
 
-  // Auto-scan: continuous low-latency loop, double-confirmation for precision
+  // Auto-scan: continuous low-latency loop, optimized for moving vehicles
   useEffect(() => {
     if (step !== "camera") return;
     let cancelled = false;
+    let consecutiveMatches = 0;
+    const REQUIRED_MATCHES = 2; // Reduced from strict double-check for moving vehicles
 
     const tick = async () => {
       if (cancelled || stoppedRef.current) return;
@@ -209,16 +213,22 @@ export default function ScanPlate() {
             if (error) throw error;
             const plate = data?.plate?.trim().toUpperCase();
             if (plate) {
-              // Require 2 consecutive identical reads for precision
+              // More lenient matching for moving vehicles
               if (lastPlateRef.current === plate) {
-                stopCamera();
-                setStep("processing");
-                await lookupPlate(plate);
-                return;
+                consecutiveMatches++;
+                if (consecutiveMatches >= REQUIRED_MATCHES) {
+                  stopCamera();
+                  setStep("processing");
+                  await lookupPlate(plate);
+                  return;
+                }
+              } else {
+                consecutiveMatches = 0;
+                lastPlateRef.current = plate;
               }
-              lastPlateRef.current = plate;
             } else {
               lastPlateRef.current = null;
+              consecutiveMatches = 0;
               setAttempts((a) => a + 1);
             }
           } catch (err) {

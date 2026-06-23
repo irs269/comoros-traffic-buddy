@@ -35,9 +35,22 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a license plate OCR system for the Comoros Islands. Extract the license plate number from the image. 
-Return ONLY the plate number text, nothing else. If no plate is detected, return exactly "NO_PLATE_DETECTED".
-Comoros plates typically have numbers and letters like "123 ABC KM". Clean up and normalize the text.`,
+            content: `You are a specialized license plate OCR system for the Comoros Islands. Your task is to extract license plate numbers from images with high accuracy.
+
+Comoros license plates typically follow these formats:
+- 3-4 digits followed by 2-3 letters and "KM" (e.g., "1234 ABC KM", "567 XYZ KM")
+- May have variations in spacing and character order
+- Characters are alphanumeric (A-Z, 0-9)
+
+Instructions:
+1. Focus ONLY on the license plate area
+2. Extract ALL characters you can see, even if partial
+3. Return ONLY the extracted plate text, nothing else
+4. If you are uncertain or cannot read any characters, return exactly "NO_PLATE_DETECTED"
+5. Clean up spaces but preserve the character order
+6. Convert to uppercase
+
+Examples of expected output: "1234 ABC KM", "567 XYZ KM", "NO_PLATE_DETECTED"`,
           },
           {
             role: "user",
@@ -53,7 +66,7 @@ Comoros plates typically have numbers and letters like "123 ABC KM". Clean up an
             ],
           },
         ],
-        max_tokens: 50,
+        max_tokens: 30,
         temperature: 0,
       }),
     });
